@@ -1,5 +1,6 @@
 //jshint esversion:6
 
+const mongoose = require('mongoose');
 const express = require("express");
 const bodyParser = require("body-parser");
 const ejs = require("ejs");
@@ -16,11 +17,24 @@ app.set('view engine', 'ejs');
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(express.static("public"));
+mongoose.connect('mongodb://localhost:27017/blogDB', {useNewUrlParser: true, useUnifiedTopology: true});
 
-
+const postSchema = new mongoose.Schema({
+  title : String,
+  content: String
+});
+const Post = mongoose.model("post", postSchema);
 
 app.get('/',function(req, res){
-  res.render('home', {content: homeStartingContent , posts: posts });
+  Post.find(function(err,posts){
+    if(err){
+      console.log(err);
+      res.render('home', {content: homeStartingContent , posts: {} });
+    } else {
+      res.render('home', {content: homeStartingContent , posts: posts });
+    }
+  })
+  
 });
 
 app.get('/about', function(req, res) {
@@ -36,22 +50,30 @@ app.get('/compose', function(req, res){
 })
 
 app.post('/compose', function(req,res){
-  var post = {
+  
+  var post = new Post( {
     title: req.body.composeTitle,
     content: req.body.composePost,
-  };
-  posts.push(post);
+  });
+  post.save()
   res.redirect('/');
 });
 
-app.get('/post/:title',function(req,res){
-  var post = posts.find(x => _.lowerCase(x.title) === _.lowerCase(req.params.title))
-  if (post){
-    res.render('post', {post: post});
-  } else {
-    res.redirect('/');
-  }
-})
+app.get('/post/:postId',function(req,res){
+  Post.findById({_id: req.params.postId}, function(err,post){
+    if(err){
+      res.redirect('/');
+    } else {
+      res.render('post', {post: post});
+    }
+  });
+  // var post = posts.find(x => _.lowerCase(x.title) === _.lowerCase(req.params.title))
+  // if (post){
+    
+  // } else {
+  //   res.redirect('/');
+  // }
+});
 
 
 
